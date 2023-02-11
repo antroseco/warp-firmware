@@ -18,7 +18,10 @@
 #include "glaux.h"
 #include "warp.h"
 #include "gpio_pins.h"
+
+#if WARP_BUILD_ENABLE_DEVRV8803C7
 #include "devRV8803C7.h"
+#endif
 
 
 
