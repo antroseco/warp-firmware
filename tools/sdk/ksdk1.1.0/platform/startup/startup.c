@@ -79,7 +79,7 @@ void init_data_bss(void)
     uint32_t __RAM_VECTOR_TABLE_SIZE = (uint32_t)(__RAM_VECTOR_TABLE_SIZE_BYTES);
 #endif
 
-    if (__VECTOR_RAM != __VECTOR_TABLE)
+    if ((void *)__VECTOR_RAM != (void *)__VECTOR_TABLE)
     {   
         /* Copy the vector table from ROM to RAM */
         for (n = 0; n < ((uint32_t)__RAM_VECTOR_TABLE_SIZE)/sizeof(uint32_t); n++)
