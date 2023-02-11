@@ -1613,7 +1613,11 @@ main(void)
 	#endif
 
 	#if (WARP_BUILD_ENABLE_DEVMMA8451Q)
+	#if (WARP_BUILD_ENABLE_FRDMKL03)
+		initMMA8451Q(	0x1D	/* i2cAddress */,	kWarpDefaultSupplyVoltageMillivoltsMMA8451Q	);
+	#else
 		initMMA8451Q(	0x1C	/* i2cAddress */,	kWarpDefaultSupplyVoltageMillivoltsMMA8451Q	);
+	#endif
 	#endif
 
 	#if (WARP_BUILD_ENABLE_DEVLPS25H)
@@ -2734,7 +2738,7 @@ main(void)
 
 				switch(key)
 				{
-					
+
 				/*
 				 *	Read informational and status registers
 				 */
@@ -2755,12 +2759,12 @@ main(void)
 					{
 						warpPrint("JEDEC ID = [0x%X] [0x%X] [0x%X]\n", deviceIS25xPState.spiSinkBuffer[1], deviceIS25xPState.spiSinkBuffer[2], deviceIS25xPState.spiSinkBuffer[3]);
 					}
-					
+
 
 					uint8_t	ops2[] = {	/* Read Manufacturer & Device ID */
 						0x90,	/* Instruction Code */
-						0x00,	/* Dummy Byte 1	    */ 
-						0x00,	/* Dummy Byte 2     */ 
+						0x00,	/* Dummy Byte 1	    */
+						0x00,	/* Dummy Byte 2     */
 						0x00,	/* Control. 00h: First MFID then ID. 01h: First ID then MFID. */
 						0x00,	/* Dummy Receive Byte */
 						0x00,	/* Dummy Receive Byte */
@@ -2776,10 +2780,10 @@ main(void)
 					}
 
 					uint8_t	ops3[] = {	/* Read ID / Release Power Down */
-						0xAB,	/* Instruction Code */  
-						0x00,	/* Dummy Byte */  
-						0x00,	/* Dummy Byte */ 
-						0x00,	/* Dummy Byte */ 
+						0xAB,	/* Instruction Code */
+						0x00,	/* Dummy Byte */
+						0x00,	/* Dummy Byte */
+						0x00,	/* Dummy Byte */
 						0x00,	/* Dummy Receive Byte */
 					};
 					status = spiTransactionIS25xP(ops3, sizeof(ops3)/sizeof(uint8_t) /* opCount */);
@@ -2793,7 +2797,7 @@ main(void)
 					}
 
 					uint8_t	ops4[] = {	/* Read Status Register */
-						0x05,	/* Byte0 */  
+						0x05,	/* Byte0 */
 						0x00,	/* Dummy Byte1 */
 					};
 					status = spiTransactionIS25xP(ops4, sizeof(ops4)/sizeof(uint8_t) /* opCount */);
@@ -2807,7 +2811,7 @@ main(void)
 					}
 
 					uint8_t	ops5[] = {	/* Read Function Register */
-						0x48,	/* RDFR */  
+						0x48,	/* RDFR */
 						0x00,	/* Dummy Byte1 */
 					};
 					status = spiTransactionIS25xP(ops5, sizeof(ops5)/sizeof(uint8_t) /* opCount */);
@@ -2821,7 +2825,7 @@ main(void)
 					}
 
 					uint8_t	ops6[] = {	/* Read Read Parameters */
-						0x61,	/* RDRP */  
+						0x61,	/* RDRP */
 						0x00,	/* Dummy Byte1 */
 					};
 					status = spiTransactionIS25xP(ops6, sizeof(ops6)/sizeof(uint8_t) /* opCount */);
@@ -2835,7 +2839,7 @@ main(void)
 					}
 
 					uint8_t	ops7[] = {	/* Read Extended Read Parameters */
-						0x81,	/* RDERP */  
+						0x81,	/* RDERP */
 						0x00,	/* Dummy Byte1 */
 					};
 					status = spiTransactionIS25xP(ops7, sizeof(ops7)/sizeof(uint8_t) /* opCount */);
@@ -2849,7 +2853,7 @@ main(void)
 					}
 
 					uint8_t	ops8[] = {	/* Read Unique ID */
-						0x4B,	/* RDUID */  
+						0x4B,	/* RDUID */
 						0x00,	/* Dummy Byte */
 						0x00,	/* Dummy Byte */
 						0x00,	/* Dummy Byte */
@@ -2869,14 +2873,14 @@ main(void)
 					break;
 				}
 
-				
+
 				/*
 				 *	Dump first 0xF addresses from JEDEC table
 				 */
 				case '2':
 				{
 					uint8_t	ops[] = {	/* Read JEDEC Discoverable Params */
-						0x5A,	/* RDSFDP */  
+						0x5A,	/* RDSFDP */
 						0x00,	/* Address Byte */
 						0x00,	/* Address Byte */
 						0x00,	/* Address Byte */
@@ -2945,15 +2949,15 @@ main(void)
 						{
 							warpPrint("0x%08x:\t%x\n", i, buf[i]);
 							OSA_TimeDelay(5);
-							
+
 						}
 					}
 
-					
+
 					break;
 				}
 
-				
+
 				/*
 				 *	Write Enable
 				 */
@@ -2962,7 +2966,7 @@ main(void)
 					WarpStatus 	status;
 					uint8_t		ops[] = {
 						0x06,	/* WREN */
-					};					
+					};
 
 					status = spiTransactionIS25xP(ops, 1);
 					if (status != kWarpStatusOK)
@@ -2973,7 +2977,7 @@ main(void)
 					{
 						warpPrint("OK.\n");
 					}
-					
+
 					break;
 				}
 
@@ -2985,12 +2989,12 @@ main(void)
 				{
 					WarpStatus 	status;
 					uint8_t		buf[32] = {0};
-					
+
 					for (size_t i = 0; i < 32; i++)
 					{
 						buf[i] = i;
 					}
-					
+
 
 					status = programPageIS25xP(0, 32, buf);
 					if (status != kWarpStatusOK)
@@ -3002,7 +3006,7 @@ main(void)
 						warpPrint("OK.\n");
 					}
 
-					
+
 					break;
 				}
 
@@ -3012,7 +3016,7 @@ main(void)
 				 */
 				case '6':
 				{
-					WarpStatus 	status;			
+					WarpStatus 	status;
 
 					status = chipEraseIS25xP();
 					if (status != kWarpStatusOK)
