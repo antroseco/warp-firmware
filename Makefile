@@ -45,7 +45,7 @@ warp:
 	cp src/boot/ksdk1.1.0/devICE40.*				build/ksdk1.1/work/demos/Warp/src/
 	cd build/ksdk1.1/work/lib/ksdk_platform_lib/armgcc/KL03Z4 && ./clean.sh; ./build_release.sh
 	cd build/ksdk1.1/work/demos/Warp/armgcc/Warp && ./clean.sh; ./build_release.sh
-	@echo "\n\nNow, run\n\n\tmake load-warp\n\n"
+	@echo -e "\n\nNow, run\n\n\tmake load-warp\n\n"
 
 glaux:
 	mkdir -p build/ksdk1.1/work
@@ -71,7 +71,7 @@ glaux:
 	cp src/boot/ksdk1.1.0/devBME680.*				build/ksdk1.1/work/demos/Glaux/src/
 	cd build/ksdk1.1/work/lib/ksdk_platform_lib/armgcc/KL03Z4 && ./clean.sh; ./build_release.sh
 	cd build/ksdk1.1/work/demos/Glaux/armgcc/Glaux && ./clean.sh; ./build_release.sh
-	@echo "\n\nNow, run\n\n\tmake load-glaux\n\n"
+	@echo -e "\n\nNow, run\n\n\tmake load-glaux\n\n"
 
 frdmkl03:
 	mkdir -p build/ksdk1.1/work
@@ -94,7 +94,7 @@ frdmkl03:
 	cp src/boot/ksdk1.1.0/devMMA8451Q.*				build/ksdk1.1/work/demos/Warp/src/
 	cd build/ksdk1.1/work/lib/ksdk_platform_lib/armgcc/KL03Z4 && ./clean.sh; ./build_release.sh
 	cd build/ksdk1.1/work/demos/Warp/armgcc/Warp && ./clean.sh; ./build_release.sh
-	@echo "\n\nNow, run\n\n\tmake load-warp\n\n"
+	@echo -e "\n\nNow, run\n\n\tmake load-warp\n\n"
 
 load-warp:
 	$(JLINKPATH) -device MKL03Z32XXX4 -if SWD -speed 10000 -CommanderScript tools/scripts/warp.jlink.commands
