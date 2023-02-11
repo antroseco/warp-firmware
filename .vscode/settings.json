@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "*.vhd": "vhdl",
+        "*.ino": "c",
+        "stdint.h": "c"
+    },
+    "editor.formatOnSaveMode": "modifications"
+}
