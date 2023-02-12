@@ -11,7 +11,7 @@
                 "FREEDOM",
                 "WARP_BUILD_ENABLE_FRDMKL03"
             ],
-            "compilerPath": "/usr/bin/gcc",
+            "compilerPath": "/usr/bin/arm-none-eabi-gcc",
             "cStandard": "c17",
             "cppStandard": "c++14",
             "intelliSenseMode": "linux-gcc-arm",
