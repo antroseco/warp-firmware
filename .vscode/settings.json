@@ -4,5 +4,6 @@
         "*.ino": "c",
         "stdint.h": "c"
     },
-    "editor.formatOnSaveMode": "modifications"
+    "editor.formatOnSaveMode": "modifications",
+    "editor.tabSize": 8
 }
