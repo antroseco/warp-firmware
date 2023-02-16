@@ -155,14 +155,20 @@ devSSD1331init(void)
 	writeCommand(0x5F);
 	writeCommand(0x3F);
 
-
-
 	/*
-	 *	Any post-initialization drawing commands go here.
+	 *	Fill the entire screen with the brightest shade of green.
 	 */
-	//...
-
-
+	writeCommand(kSSD1331CommandDRAWRECT);
+	writeCommand(0x00); // Column address of start.
+	writeCommand(0x00); // Row address of start.
+	writeCommand(0x5F); // Column address of end.
+	writeCommand(0x3F); // Row address of end.
+	writeCommand(0x00); // Color C of the line.
+	writeCommand(0xFF); // Color B of the line.
+	writeCommand(0x00); // Color A of the line.
+	writeCommand(0x00); // Color C of the fill area.
+	writeCommand(0xFF); // Color B of the fill area.
+	writeCommand(0x00); // Color A of the fill area.
 
 	return 0;
 }
