@@ -165,8 +165,25 @@ gpio_output_pin_user_config_t	outputPins[] = {
 			.config.slewRate = kPortSlowSlewRate,
 			.config.driveStrength = kPortLowDriveStrength,
 		},
-	#elif (WARP_BUILD_ENABLE_FRDMKL03)
-
+	#elif (WARP_BUILD_ENABLE_FRDMKL03 && WARP_BUILD_ENABLE_DEVSSD1331)
+	  	{
+			.pinName = kWarpPinSSD1331_SPI_DC,
+			.config.outputLogic = 1,
+			.config.slewRate = kPortSlowSlewRate,
+			.config.driveStrength = kPortLowDriveStrength,
+		},
+		{
+			.pinName = kWarpPinSSD1331_SPI_RST,
+			.config.outputLogic = 1,
+			.config.slewRate = kPortSlowSlewRate,
+			.config.driveStrength = kPortLowDriveStrength,
+		},
+		{
+			.pinName = kWarpPinSSD1331_SPI_nCS,
+			.config.outputLogic = 1,
+			.config.slewRate = kPortSlowSlewRate,
+			.config.driveStrength = kPortLowDriveStrength,
+		},
 	#endif
 
 	{

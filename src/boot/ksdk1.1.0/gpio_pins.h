@@ -29,7 +29,7 @@
  *	PTB7				DISABLED	ALT1
  *	PTB10				DISABLED	ALT1
  *	PTB11				DISABLED	ALT1
- *	PTB13/CLKOUT32K			DISABLED	ALT1 
+ *	PTB13/CLKOUT32K			DISABLED	ALT1
  */
 
 enum _gpio_pins
@@ -47,7 +47,7 @@ enum _gpio_pins
 	#endif
 
 	kWarpPinSPI_MISO_UART_RTS		= GPIO_MAKE_PIN(HW_GPIOA, 6),
-	kWarpPinSPI_MOSI_UART_CTS		= GPIO_MAKE_PIN(HW_GPIOA, 7),
+	kWarpPinSPI_MOSI_UART_CTS		= GPIO_MAKE_PIN(HW_GPIOA, 8),
 	kWarpPinADXL362_SPI_nCS			= GPIO_MAKE_PIN(HW_GPIOA, 8),
 
 	#if (WARP_BUILD_ENABLE_GLAUX_VARIANT)
@@ -64,12 +64,21 @@ enum _gpio_pins
 		kGlauxPinLED			= GPIO_MAKE_PIN(HW_GPIOB, 0),
 		kGlauxPinUnusedPTB1		= GPIO_MAKE_PIN(HW_GPIOB, 1),
 	#else
-		kWarpPinSPI_SCK			= GPIO_MAKE_PIN(HW_GPIOB, 0),
+		kWarpPinSPI_SCK			= GPIO_MAKE_PIN(HW_GPIOA, 9),
 		kWarpPinFPGA_nCS		= GPIO_MAKE_PIN(HW_GPIOB, 1),
 	#endif
 
 	#if (WARP_BUILD_ENABLE_FRDMKL03)
+	#if (WARP_BUILD_ENABLE_DEVSSD1331)
+		kWarpPinSSD1331_SPI_DC			= GPIO_MAKE_PIN(HW_GPIOA, 12),
+		kWarpPinSSD1331_SPI_RST			= GPIO_MAKE_PIN(HW_GPIOB, 0),
+		kWarpPinSSD1331_SPI_nCS			= GPIO_MAKE_PIN(HW_GPIOB, 13),
+	#elif
+		kWarpPinUnusedPTA12			= GPIO_MAKE_PIN(HW_GPIOA, 12),
 		kWarpPinUnusedPTB0			= GPIO_MAKE_PIN(HW_GPIOB, 0),
+		kWarpPinUnusedPTB13			= GPIO_MAKE_PIN(HW_GPIOB, 13),
+	#endif
+
 		kWarpPinUnusedPTB1			= GPIO_MAKE_PIN(HW_GPIOB, 1),
 		kWarpPinUnusedPTB2			= GPIO_MAKE_PIN(HW_GPIOB, 2),
 		kWarpPinUnusedPTB3			= GPIO_MAKE_PIN(HW_GPIOB, 3),
@@ -79,14 +88,12 @@ enum _gpio_pins
 		kWarpPinUnusedPTB7			= GPIO_MAKE_PIN(HW_GPIOB, 7),
 		kWarpPinUnusedPTB10			= GPIO_MAKE_PIN(HW_GPIOB, 10),
 		kWarpPinUnusedPTB11			= GPIO_MAKE_PIN(HW_GPIOB, 11),
-		kWarpPinUnusedPTB13			= GPIO_MAKE_PIN(HW_GPIOB, 13),
 
 		kWarpPinUnusedPTA5			= GPIO_MAKE_PIN(HW_GPIOA, 5),
 		kWarpPinUnusedPTA6			= GPIO_MAKE_PIN(HW_GPIOA, 6),
 		kWarpPinUnusedPTA7			= GPIO_MAKE_PIN(HW_GPIOA, 7),
 		kWarpPinUnusedPTA8			= GPIO_MAKE_PIN(HW_GPIOA, 8),
 		kWarpPinUnusedPTA9			= GPIO_MAKE_PIN(HW_GPIOA, 9),
-		kWarpPinUnusedPTA12			= GPIO_MAKE_PIN(HW_GPIOA, 12),
 	#else
 		#if (WARP_BUILD_ENABLE_GLAUX_VARIANT)
 			kGlauxPinFlash_SPI_nCS		= GPIO_MAKE_PIN(HW_GPIOB, 2),
