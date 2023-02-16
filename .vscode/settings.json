@@ -2,7 +2,10 @@
     "files.associations": {
         "*.vhd": "vhdl",
         "*.ino": "c",
-        "stdint.h": "c"
+        "stdint.h": "c",
+        "config.h": "c",
+        "devssd1331.h": "c",
+        "gpio_pins.h": "c"
     },
     "editor.formatOnSaveMode": "modifications",
     "editor.tabSize": 8

@@ -176,6 +176,9 @@
 	volatile WarpUARTDeviceState			deviceBGXState;
 #endif
 
+#if (WARP_BUILD_ENABLE_DEVSSD1331)
+#include "devSSD1331.h"
+#endif
 
 volatile i2c_master_state_t				i2cMasterState;
 volatile spi_master_state_t				spiMasterState;
@@ -1841,6 +1844,12 @@ main(void)
 		warpDisableSupplyVoltage();
 		warpPrint("done.\n");
 	#endif
+
+#if (WARP_BUILD_ENABLE_DEVSSD1331)
+		warpPrint("Initializing SSD1331...");
+		devSSD1331init();
+		warpPrint("done.\n");
+#endif
 
 	/*
 	 *	At this point, we consider the system "booted" and, e.g., warpPrint()s

@@ -86,13 +86,14 @@ ELSEIF(CMAKE_BUILD_TYPE MATCHES Release)
 ENDIF()
 
 # ADD_EXECUTABLE
-ADD_EXECUTABLE(Warp 
+ADD_EXECUTABLE(Warp
     "${ProjDirPath}/../../../../platform/utilities/src/fsl_misc_utilities.c"
     "${ProjDirPath}/../../../../platform/startup/MKL03Z4/gcc/startup_MKL03Z4.S"
     "${ProjDirPath}/../../src/boot.c"
     "${ProjDirPath}/../../src/errstrsEN.c"
     "${ProjDirPath}/../../src/powermodes.c"
     "${ProjDirPath}/../../src/devMMA8451Q.c"
+    "${ProjDirPath}/../../src/devSSD1331.c"
     "${ProjDirPath}/../../src/SEGGER_RTT.c"
     "${ProjDirPath}/../../src/SEGGER_RTT_printf.c"
     "${ProjDirPath}/../../../../platform/drivers/src/i2c/fsl_i2c_irq.c"

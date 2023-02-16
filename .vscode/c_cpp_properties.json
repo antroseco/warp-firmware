@@ -9,7 +9,8 @@
                 "CPU_MKL03Z32VFK4",
                 "FRDM_KL03Z48M",
                 "FREEDOM",
-                "WARP_BUILD_ENABLE_FRDMKL03"
+                "WARP_BUILD_ENABLE_FRDMKL03",
+                "WARP_BUILD_ENABLE_DEVSSD1331"
             ],
             "compilerPath": "/usr/bin/arm-none-eabi-gcc",
             "cStandard": "c17",
