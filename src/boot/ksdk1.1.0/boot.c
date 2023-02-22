@@ -1846,7 +1846,7 @@ main(void)
 	#endif
 
 #if (WARP_BUILD_ENABLE_DEVSSD1331)
-		warpPrint("Initializing SSD1331...");
+		warpPrint("Initializing SSD1331... ");
 		devSSD1331init();
 		warpPrint("done.\n");
 #endif
