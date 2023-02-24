@@ -59,6 +59,21 @@
 
 #define INA219_REGISTER_SIZE 2 /* bytes */
 
+/*
+ * Configuration register:
+ * Reset = false				0
+ * Unused					0
+ * Bus Voltage Range = 16 V     		0
+ * PGA = gain 1, +- 40 mV       		00
+ * Bus ADC Resolution = 12-bits, no averaging	0011
+ * Shunt ADC Resolution = 12-bits, no averaging	0011
+ * Mode = shunt and bus, continuous		111
+ */
+#define INA219_CONFIGURATION_REGISTER_VALUE 0x019F
+
+/* Calibration register: 10 μA per bit. */
+#define INA219_CALIBRATION_REGISTER_VALUE 0xA000
+
 extern volatile WarpI2CDeviceState deviceINA219State;
 extern volatile uint32_t gWarpI2cBaudRateKbps;
 extern volatile uint32_t gWarpI2cTimeoutMilliseconds;
@@ -127,22 +142,11 @@ writeRegisterPointerINA219(const uint8_t device_register)
 WarpStatus
 configureSensorINA219(void)
 {
-	/*
-	 * Configuration register:
-	 * Reset = false				0
-	 * Unused					0
-	 * Bus Voltage Range = 16 V     		0
-	 * PGA = gain 1, +- 40 mV       		00
-	 * Bus ADC Resolution = 12-bits, no averaging	0011
-	 * Shunt ADC Resolution = 12-bits, no averaging	0011
-	 * Mode = shunt and bus, continuous		111
-	 */
-	const uint16_t CONFIGURATION_REGISTER_VALUE = 0x019F;
+	const uint16_t CONFIGURATION_REGISTER_VALUE = INA219_CONFIGURATION_REGISTER_VALUE;
 	const WarpStatus write_status_1 = writeSensorRegisterINA219(INA219_REGISTER_CONFIGURATION,
 								    &CONFIGURATION_REGISTER_VALUE);
 
-	/* Calibration register: 10 μA per bit. */
-	const uint16_t CALIBRATION_REGISTER_VALUE = 0xA000;
+	const uint16_t CALIBRATION_REGISTER_VALUE = INA219_CALIBRATION_REGISTER_VALUE;
 	const WarpStatus write_status_2 = writeSensorRegisterINA219(INA219_REGISTER_CALIBRATION,
 								    &CALIBRATION_REGISTER_VALUE);
 
@@ -152,10 +156,14 @@ configureSensorINA219(void)
 }
 
 static WarpStatus
-readSensorRegisterINA219(void)
+readSensorRegisterINA219(const uint8_t device_register, uint16_t *buffer)
 {
 	/* All registers are 2 bytes long. */
 	_Static_assert(sizeof deviceINA219State.i2cBuffer >= INA219_REGISTER_SIZE);
+
+	/* Not the best error, but there's nothing more appropriate. */
+	if (!buffer)
+		return kWarpStatusBadDeviceCommand;
 
 	const i2c_device_t slave = {
 	    .address = deviceINA219State.i2cAddress,
@@ -164,11 +172,15 @@ readSensorRegisterINA219(void)
 
 	warpEnableI2Cpins();
 
+	const WarpStatus status_1 = writeRegisterPointerINA219(device_register);
+	if (status_1 != kWarpStatusOK)
+		return status_1;
+
 	/*
 	 * No command; the register pointer should be set in a previous
 	 * transaction.
 	 */
-	const i2c_status_t status = I2C_DRV_MasterReceiveDataBlocking(
+	const i2c_status_t status_2 = I2C_DRV_MasterReceiveDataBlocking(
 	    0 /* I2C peripheral instance */,
 	    &slave,
 	    NULL,
@@ -177,8 +189,13 @@ readSensorRegisterINA219(void)
 	    INA219_REGISTER_SIZE,
 	    gWarpI2cTimeoutMilliseconds);
 
-	return status == kStatus_I2C_Success ? kWarpStatusOK
-					     : kWarpStatusDeviceCommunicationFailed;
+	if (status_2 != kStatus_I2C_Success)
+		return kWarpStatusDeviceCommunicationFailed;
+
+	*buffer = (deviceINA219State.i2cBuffer[0] << 8) |
+		  (deviceINA219State.i2cBuffer[1]);
+
+	return kWarpStatusOK;
 }
 
 static uint16_t
@@ -218,15 +235,10 @@ convertRegisterValueINA219(const uint8_t device_register, uint16_t value)
 static void
 printRegisterINA219(const uint8_t device_register, bool hexModeFlag)
 {
-	WarpStatus i2c_status = kWarpStatusOK;
+	uint16_t read_value;
+	const WarpStatus status = readSensorRegisterINA219(device_register, &read_value);
 
-	i2c_status |= writeRegisterPointerINA219(device_register);
-	i2c_status |= readSensorRegisterINA219();
-
-	const uint16_t read_value = (deviceINA219State.i2cBuffer[0] << 8) |
-				    (deviceINA219State.i2cBuffer[1]);
-
-	if (i2c_status != kWarpStatusOK)
+	if (status != kWarpStatusOK)
 		warpPrint(" ----,");
 	else if (hexModeFlag)
 		warpPrint(" 0x%04x,", read_value);
@@ -234,12 +246,30 @@ printRegisterINA219(const uint8_t device_register, bool hexModeFlag)
 		warpPrint(" %d,", convertRegisterValueINA219(device_register, read_value));
 }
 
+static WarpStatus
+verifyRegisterINA219(const uint8_t device_register, const uint16_t expected_value)
+{
+	uint16_t value;
+	const WarpStatus status = readSensorRegisterINA219(device_register, &value);
+
+	if (status != kWarpStatusOK)
+		return status;
+
+	return value == expected_value ? kWarpStatusOK : kWarpStatusDeviceNotInitialized;
+}
+
 void printSensorDataINA219(bool hexModeFlag)
 {
-	printRegisterINA219(INA219_REGISTER_CONFIGURATION, hexModeFlag);
+	if (verifyRegisterINA219(INA219_REGISTER_CONFIGURATION,
+				 INA219_CONFIGURATION_REGISTER_VALUE) != kWarpStatusOK)
+		return warpPrint("\nFailed to verify INA219 Configuration register\n");
+
+	if (verifyRegisterINA219(INA219_REGISTER_CALIBRATION,
+				 INA219_CALIBRATION_REGISTER_VALUE) != kWarpStatusOK)
+		return warpPrint("\nFailed to verify INA219 Calibration register\n");
+
 	printRegisterINA219(INA219_REGISTER_SHUNT_VOLTAGE, hexModeFlag);
 	printRegisterINA219(INA219_REGISTER_BUS_VOLTAGE, hexModeFlag);
 	printRegisterINA219(INA219_REGISTER_POWER, hexModeFlag);
 	printRegisterINA219(INA219_REGISTER_CURRENT, hexModeFlag);
-	printRegisterINA219(INA219_REGISTER_CALIBRATION, hexModeFlag);
 }
