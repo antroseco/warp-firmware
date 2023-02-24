@@ -193,10 +193,15 @@ convertRegisterValueINA219(const uint8_t device_register, uint16_t value)
 		return value * 10;
 	case INA219_REGISTER_BUS_VOLTAGE:
 		/*
-		 * LSB = 4 mV. Voltage is stored in bits 14:3.
 		 * Bit 0 signifies overflow.
+		 * XXX this doesn't seem to work when the power register
+		 * overflows.
 		 */
-		return value & 1 ? 0 : (value >> 3) * 4;
+		if (value & 1)
+			warpPrint("\nOVERFLOW DETECTED\n");
+
+		/*LSB = 4 mV. Voltage is stored in bits 14:3. */
+		return (value >> 3) * 4;
 	case INA219_REGISTER_POWER:
 		/* LSB = 200 uW (configuration-dependent). */
 		return value * 200;
