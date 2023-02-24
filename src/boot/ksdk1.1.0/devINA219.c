@@ -198,9 +198,14 @@ readSensorRegisterINA219(const uint8_t device_register, uint16_t *buffer)
 	return kWarpStatusOK;
 }
 
-static uint16_t
-convertRegisterValueINA219(const uint8_t device_register, uint16_t value)
+static uint32_t
+convertRegisterValueINA219(const uint8_t device_register, uint32_t value)
 {
+	/*
+	 * This function uses 32-bit integers, even though the registers are
+	 * 16 bits wide, to prevent overflows in the multiplications below.
+	 */
+
 	switch (device_register)
 	{
 	case INA219_REGISTER_CONFIGURATION:
@@ -209,11 +214,7 @@ convertRegisterValueINA219(const uint8_t device_register, uint16_t value)
 		/* LSB = 10 uV. */
 		return value * 10;
 	case INA219_REGISTER_BUS_VOLTAGE:
-		/*
-		 * Bit 0 signifies overflow.
-		 * XXX this doesn't seem to work when the power register
-		 * overflows.
-		 */
+		/* Bit 0 signifies overflow. */
 		if (value & 1)
 			warpPrint("\nOVERFLOW DETECTED\n");
 
