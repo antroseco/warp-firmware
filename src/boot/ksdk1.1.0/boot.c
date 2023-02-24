@@ -176,6 +176,11 @@
 	volatile WarpUARTDeviceState			deviceBGXState;
 #endif
 
+#if (WARP_BUILD_ENABLE_DEVINA219)
+#include "devINA219.h"
+	volatile WarpI2CDeviceState deviceINA219State;
+#endif
+
 #if (WARP_BUILD_ENABLE_DEVSSD1331)
 #include "devSSD1331.h"
 #endif
@@ -1714,6 +1719,10 @@ main(void)
 		}
 	#endif
 
+#if (WARP_BUILD_ENABLE_DEVINA219)
+		initINA219(0x40 /* i2cAddress */);
+#endif
+
 	/*
 	 *	Initialization: Devices hanging off SPI
 	 */
@@ -3175,6 +3184,10 @@ printAllSensors(bool printHeadersAndCalibration, bool hexModeFlag, int menuDelay
 					);
 	#endif
 
+#if (WARP_BUILD_ENABLE_DEVINA219)
+	numberOfConfigErrors += configureSensorINA219();
+#endif
+
 	if (printHeadersAndCalibration)
 	{
 		warpPrint("Measurement number, RTC->TSR, RTC->TPR,\t\t");
@@ -3221,8 +3234,12 @@ printAllSensors(bool printHeadersAndCalibration, bool hexModeFlag, int menuDelay
 			warpPrint(" HDC1000 Temp, HDC1000 Hum,");
 		#endif
 
-		warpPrint(" RTC->TSR, RTC->TPR, # Config Errors");
-		warpPrint("\n\n");
+#if (WARP_BUILD_ENABLE_DEVINA219)
+			warpPrint(" INA219 Configuration, INA219 Shunt uV, INA219 Bus mV, INA219 Power uW, INA219 Current uA, INA219 Calibration,");
+#endif
+
+			warpPrint(" RTC->TSR, RTC->TPR, # Config Errors");
+			warpPrint("\n\n");
 	}
 
 
@@ -3267,6 +3284,10 @@ printAllSensors(bool printHeadersAndCalibration, bool hexModeFlag, int menuDelay
 		#if (WARP_BUILD_ENABLE_DEVHDC1000)
 			printSensorDataHDC1000(hexModeFlag);
 		#endif
+
+#if (WARP_BUILD_ENABLE_DEVINA219)
+			printSensorDataINA219(hexModeFlag);
+#endif
 
 		warpPrint(" %12d, %6d, %2u\n", RTC->TSR, RTC->TPR, numberOfConfigErrors);
 

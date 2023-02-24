@@ -5,7 +5,11 @@
         "stdint.h": "c",
         "config.h": "c",
         "devssd1331.h": "c",
-        "gpio_pins.h": "c"
+        "gpio_pins.h": "c",
+        "fsl_clock_manager.h": "c",
+        "fsl_i2c_master_driver.h": "c",
+        "segger_rtt.h": "c",
+        "assert.h": "c"
     },
     "editor.formatOnSaveMode": "modifications",
     "editor.tabSize": 8

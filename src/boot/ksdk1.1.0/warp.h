@@ -1,3 +1,5 @@
+#pragma once
+
 #include "fsl_spi_master_driver.h"
 
 #define	min(x,y)	((x) < (y) ? (x) : (y))
@@ -12,7 +14,7 @@
        (byte & 0x08 ? '1' : '0'), \
        (byte & 0x04 ? '1' : '0'), \
        (byte & 0x02 ? '1' : '0'), \
-       (byte & 0x01 ? '1' : '0') 
+       (byte & 0x01 ? '1' : '0')
 
 /*
  *	On Glaux, we use PTA0/IRQ0/LLWU_P7 (SWD_CLK) as the interrupt line
