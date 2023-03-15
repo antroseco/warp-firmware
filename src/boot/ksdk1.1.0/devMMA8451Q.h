@@ -1,6 +1,7 @@
 /*
 	Authored 2016-2018. Phillip Stanley-Marbell. Additional contributors,
 	2018-onwards, see git log.
+	2023 Andreas Economides.
 
 	All rights reserved.
 
@@ -36,9 +37,9 @@
 	POSSIBILITY OF SUCH DAMAGE.
 */
 
-void		initMMA8451Q(const uint8_t i2cAddress, uint16_t operatingVoltageMillivolts);
-WarpStatus	readSensorRegisterMMA8451Q(uint8_t deviceRegister, int numberOfBytes);
-WarpStatus	writeSensorRegisterMMA8451Q(uint8_t deviceRegister,
-					uint8_t payloadBtye);
-WarpStatus	configureSensorMMA8451Q(uint8_t payloadF_SETUP, uint8_t payloadCTRL_REG1);
-void		printSensorDataMMA8451Q(bool hexModeFlag);
+void initMMA8451Q(const uint8_t i2cAddress, uint16_t operatingVoltageMillivolts);
+WarpStatus readSensorRegisterMMA8451Q(uint8_t deviceRegister, int numberOfBytes);
+WarpStatus writeSensorRegisterMMA8451Q(uint8_t deviceRegister, uint8_t payloadBtye);
+WarpStatus configureSensorMMA8451Q();
+void printSensorDataMMA8451Q(bool hexModeFlag);
+void startLoopMMA8451Q(void);
