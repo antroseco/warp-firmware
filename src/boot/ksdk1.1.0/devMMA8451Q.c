@@ -67,6 +67,7 @@ extern volatile uint32_t gWarpSupplySettlingDelayMilliseconds;
 
 #define MMA8451Q_STATUS_REGISTER 0x00
 #define MMA8451Q_FIFO_POINTER_REGISTER 0x01
+#define MMA8451Q_REGISTER_MAX 0x31
 
 struct __attribute__((packed)) ReadingsRaw
 {
@@ -230,31 +231,9 @@ read_register(uint8_t device_register, int number_of_bytes, uint8_t *out)
 				      ? out
 				      : (uint8_t *)deviceMMA8451QState.i2cBuffer;
 
-	// clang-format off
-	switch (device_register)
-	{
-		case 0x00: case 0x01: case 0x02: case 0x03:
-		case 0x04: case 0x05: case 0x06: case 0x09:
-		case 0x0a: case 0x0b: case 0x0c: case 0x0d:
-		case 0x0e: case 0x0f: case 0x10: case 0x11:
-		case 0x12: case 0x13: case 0x14: case 0x15:
-		case 0x16: case 0x17: case 0x18: case 0x1d:
-		case 0x1e: case 0x1f: case 0x20: case 0x21:
-		case 0x22: case 0x23: case 0x24: case 0x25:
-		case 0x26: case 0x27: case 0x28: case 0x29:
-		case 0x2a: case 0x2b: case 0x2c: case 0x2d:
-		case 0x2e: case 0x2f: case 0x30: case 0x31:
-		// clang-format on
-		{
-			/* OK */
-			break;
-		}
-
-		default:
-		{
-		// return kWarpStatusBadDeviceCommand;
-		}
-	}
+	/* All valid registers can be read. */
+	if (device_register > MMA8451Q_REGISTER_MAX)
+		return kWarpStatusBadDeviceCommand;
 
 	i2c_device_t slave =
 	{
