@@ -1490,11 +1490,11 @@ main(void)
 	if (!WARP_BUILD_BOOT_TO_CSVSTREAM)
 	{
 		warpPrint("\n\n\n\rBooting Warp, in 3... ");
-		OSA_TimeDelay(1000);
+		OSA_TimeDelay(10);
 		warpPrint("2... ");
-		OSA_TimeDelay(1000);
+		OSA_TimeDelay(10);
 		warpPrint("1...\n\n\n\r");
-		OSA_TimeDelay(1000);
+		OSA_TimeDelay(10);
 	}
 
 	/*
