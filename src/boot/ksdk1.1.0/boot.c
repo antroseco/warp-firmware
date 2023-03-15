@@ -2063,6 +2063,10 @@ main(void)
 			warpPrint("\r- 'v': Enter VLLS0 low-power mode for 3s, then reset\n");
 		#endif
 
+		#if (WARP_BUILD_ENABLE_FRDMKL03)
+			warpPrint("\r- 'y': start Activity Classifier.\n");
+		#endif
+
 		warpPrint("\r- 'x': disable SWD and spin for 10 secs.\n");
 		warpPrint("\r- 'z': perpetually dump all sensor data.\n");
 
@@ -2694,6 +2698,16 @@ main(void)
 
 				break;
 			}
+
+			#if (WARP_BUILD_ENABLE_FRDMKL03)
+			case 'y':
+			{
+				warpPrint("\r\n\tStarting Activity Classifier...\n");
+				startLoopMMA8451Q();
+
+				break;
+			}
+			#endif
 
 			/*
 			 *	Dump all the sensor data in one go
