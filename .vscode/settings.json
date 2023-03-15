@@ -12,5 +12,8 @@
         "assert.h": "c"
     },
     "editor.formatOnSaveMode": "modifications",
-    "editor.tabSize": 8
+    "editor.tabSize": 8,
+    "files.exclude": {
+        "build/**": true
+    }
 }
