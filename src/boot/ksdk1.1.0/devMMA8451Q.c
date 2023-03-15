@@ -63,9 +63,7 @@ extern volatile uint32_t gWarpI2cBaudRateKbps;
 extern volatile uint32_t gWarpI2cTimeoutMilliseconds;
 extern volatile uint32_t gWarpSupplySettlingDelayMilliseconds;
 
-#define SIGN_EXTEND(value, bits) ((value ^ (1 << (bits - 1))) - (1 << (bits - 1)))
-
-#define MMA8451Q_FIFO_SIZE 1
+#define MMA8451Q_FIFO_SIZE 32
 
 #define MMA8451Q_STATUS_REGISTER 0x00
 #define MMA8451Q_FIFO_POINTER_REGISTER 0x01
@@ -196,7 +194,7 @@ configureSensorMMA8451Q(void)
 	 * F_MODE[1:0] = 01     => Circular buffer
 	 * F_WMRK[5:0] = 000000 => No watermark
 	 */
-	// i2c_status |= writeSensorRegisterMMA8451Q(0x09, 0b01000000);
+	i2c_status |= writeSensorRegisterMMA8451Q(0x09, 0b01000000);
 
 	/*
 	 * 0x0E: XYZ_DATA_CFG register
@@ -411,27 +409,16 @@ void startLoopMMA8451Q(void)
 
 		warpPrint("STATUS 0x%02x\n", deviceMMA8451QState.i2cBuffer[0]);
 
-		// i2c_status = read_register(MMA8451Q_FIFO_POINTER_REGISTER,
-		// 			   1, NULL);
-
-		// if (i2c_status != kWarpStatusOK)
-		// {
-		// 	warpPrint("i2c read failed %d\n", i2c_status);
-		// 	return;
-		// }
-
-		// const uint8_t fifo_pointer = deviceMMA8451QState.i2cBuffer[0];
-
-		// warpPrint("POINTER 0x%02x\n", fifo_pointer);
-
-		// i2c_status = read_register(fifo_pointer,
-		i2c_status = read_register(0x01,
-					   sizeof buffer, (uint8_t *)buffer);
-
-		if (i2c_status != kWarpStatusOK)
+		for (int i = 0; i < MMA8451Q_FIFO_SIZE; ++i)
 		{
-			warpPrint("i2c read failed %d\n", i2c_status);
-			return;
+			i2c_status = read_register(MMA8451Q_FIFO_POINTER_REGISTER,
+						   sizeof buffer[i], (uint8_t *)&buffer[i]);
+
+			if (i2c_status != kWarpStatusOK)
+			{
+				warpPrint("i2c read failed %d\n", i2c_status);
+				return;
+			}
 		}
 
 		warpPrint("BEGIN\n");
