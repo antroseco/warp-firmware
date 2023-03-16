@@ -1,3 +1,5 @@
+import random
+
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -19,11 +21,11 @@ def make_vars(series):
     vars_min = []
 
     # FIXME
-    for i in range(0, len(series), 32):
+    for i in range(0, len(series) - 32, 16):
         vars = [
-            series["X"][i : i + 128].var(),
-            series["Y"][i : i + 128].var(),
-            series["Z"][i : i + 128].var(),
+            series["X"][i : i + 32].var(),
+            series["Y"][i : i + 32].var(),
+            series["Z"][i : i + 32].var(),
         ]
 
         vars_max.append(np.max(vars))
@@ -75,6 +77,18 @@ Xs_walking = [prepare(np.log(np.asarray([x, y, z])) / 16) for x, y, z in vars_wa
 Xs_still = [prepare(np.log(np.asarray([x, y, z])) / 16) for x, y, z in vars_still]
 
 
+def split_test_train(Xs):
+    random.shuffle(Xs)
+    return Xs[:-8], Xs[-8:]
+
+
+# Quick-and-dirty split into training and testing data.
+Xs_train_jumping, Xs_test_jumping = split_test_train(Xs_jumping)
+Xs_train_running, Xs_test_running = split_test_train(Xs_running)
+Xs_train_walking, Xs_test_walking = split_test_train(Xs_walking)
+Xs_train_still, Xs_test_still = split_test_train(Xs_still)
+
+
 def plot_3d(Xs, Ys, name):
     fig = plt.figure()
     ax = fig.add_subplot(projection="3d")
@@ -101,27 +115,63 @@ def plot_3d(Xs, Ys, name):
 def learn_weights(Xs_target, Xs_2, Xs_3, Xs_4, name):
     # One big list.
     Xs = Xs_target + Xs_2 + Xs_3 + Xs_4
-    Ys = [-1] * len(Xs_target) + [1] * (len(Xs_2) + len(Xs_3) + len(Xs_4))
+    Ys = [1] * len(Xs_target) + [-1] * (len(Xs_2) + len(Xs_3) + len(Xs_4))
 
-    plot_3d(Xs, Ys, name)
+    # plot_3d(Xs, Ys, name)
 
     assert len(Xs) == len(Ys)
 
     w = gradient_ascent(Xs, Ys, 1000)
 
-    predictions = [sigma(w @ x) for x in Xs]
+    # predictions = [sigma(w @ x) for x in Xs]
 
-    plot_3d(Xs, predictions, name)
+    # print(np.min(predictions), np.max(predictions))
+
+    # plot_3d(Xs, predictions, name)
 
     return w
 
 
-w_jumping = learn_weights(Xs_jumping, Xs_running, Xs_walking, Xs_still, "Jumping")
-w_running = learn_weights(Xs_running, Xs_jumping, Xs_walking, Xs_still, "Running")
-w_walking = learn_weights(Xs_walking, Xs_jumping, Xs_running, Xs_still, "Walking")
-w_still = learn_weights(Xs_still, Xs_jumping, Xs_running, Xs_walking, "Still")
-
+w_jumping = learn_weights(
+    Xs_train_jumping, Xs_train_running, Xs_train_walking, Xs_train_still, "Jumping"
+)
 print(w_jumping)
+
+w_running = learn_weights(
+    Xs_train_running, Xs_train_jumping, Xs_train_walking, Xs_train_still, "Running"
+)
 print(w_running)
+
+w_walking = learn_weights(
+    Xs_train_walking, Xs_train_jumping, Xs_train_running, Xs_train_still, "Walking"
+)
 print(w_walking)
+
+w_still = learn_weights(
+    Xs_train_still, Xs_train_jumping, Xs_train_running, Xs_train_walking, "Still"
+)
 print(w_still)
+
+
+def predict_softmax(x, w_desired, *w_others):
+    def evaluate(w):
+        return np.exp(w @ x)
+
+    e_desired = evaluate(w_desired)
+    e_others = sum(map(evaluate, w_others))
+
+    return e_desired / (e_desired + e_others)
+
+
+def evaluate_test_data(Xs_test, w_test, *w_others):
+    predicted = []
+    for x_test in Xs_test:
+        predicted.append(predict_softmax(x_test, w_test, *w_others))
+
+    return np.mean(predicted)
+
+
+print(evaluate_test_data(Xs_test_jumping, w_jumping, w_running, w_walking, w_still))
+print(evaluate_test_data(Xs_test_running, w_running, w_jumping, w_walking, w_still))
+print(evaluate_test_data(Xs_test_walking, w_walking, w_running, w_jumping, w_still))
+print(evaluate_test_data(Xs_test_still, w_still, w_running, w_walking, w_jumping))
