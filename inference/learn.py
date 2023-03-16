@@ -121,13 +121,10 @@ def learn_weights(Xs_target, Xs_2, Xs_3, Xs_4, name):
 
     assert len(Xs) == len(Ys)
 
-    w = gradient_ascent(Xs, Ys, 1000)
+    w = gradient_ascent(Xs, Ys, 10_000)
 
-    # predictions = [sigma(w @ x) for x in Xs]
-
-    # print(np.min(predictions), np.max(predictions))
-
-    # plot_3d(Xs, predictions, name)
+    predictions = [sigma(w @ x) for x in Xs]
+    plot_3d(Xs, predictions, name)
 
     return w
 
@@ -152,6 +149,12 @@ w_still = learn_weights(
 )
 print(w_still)
 
+# Resulting weights:
+# [-17.39943301   5.256097     3.24514102    1.3606968     25.56750169  -8.568405     -11.95350373]
+# [-24.97473782  -2.35878075   11.83739203   6.22502951   -19.89792035   26.18027844   16.17929617]
+# [-37.96150929   40.8224073   53.63272301   49.52424346  -41.485758    -37.15202189  -41.86794511]
+# [ 15.06727486  -1.84220104  -6.17115701   -6.21080921   -6.5857426    -9.87536488   -9.06407057]
+
 
 def predict_softmax(x, w_desired, *w_others):
     def evaluate(w):
@@ -175,3 +178,9 @@ print(evaluate_test_data(Xs_test_jumping, w_jumping, w_running, w_walking, w_sti
 print(evaluate_test_data(Xs_test_running, w_running, w_jumping, w_walking, w_still))
 print(evaluate_test_data(Xs_test_walking, w_walking, w_running, w_jumping, w_still))
 print(evaluate_test_data(Xs_test_still, w_still, w_running, w_walking, w_jumping))
+
+# Resulting scores:
+# 0.5375326111428795
+# 0.9764711476190131
+# 0.990410290434178
+# 0.8941149568393364
