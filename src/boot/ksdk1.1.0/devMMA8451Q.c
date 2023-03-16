@@ -189,13 +189,36 @@ configureSensorMMA8451Q(void)
 
 	warpScaleSupplyVoltage(deviceMMA8451QState.operatingVoltageMillivolts);
 
+	/* Need to enter Standby mode first. */
+	i2c_status |= writeSensorRegisterMMA8451Q(0x2A, 0b00100000);
+
 	/*
 	 * 0x09: F_SETUP FIFO setup register
 	 *
-	 * F_MODE[1:0] = 01     => Circular buffer
-	 * F_WMRK[5:0] = 000000 => No watermark
+	 * F_MODE[1:0] = 11     => Trigger mode
+	 * F_WMRK[5:0] = 000100 => Watermark = 4
 	 */
-	i2c_status |= writeSensorRegisterMMA8451Q(0x09, 0b01000000);
+	i2c_status |= writeSensorRegisterMMA8451Q(0x09, 0b11000100);
+
+	/* 0x0F: HP_FILTER_CUTOFF high-pass filter register */
+	i2c_status |= writeSensorRegisterMMA8451Q(0x0F, 0b00000011);
+
+	/* Set Trig_PULSE: Pulse interrupt trigger bit. */
+	i2c_status |= writeSensorRegisterMMA8451Q(0x0A, 0x08);
+
+	/* Enable XYZ single pulse detection. */
+	// i2c_status |= writeSensorRegisterMMA8451Q(0x21, 0x15);
+	i2c_status |= writeSensorRegisterMMA8451Q(0x21, 0x55);
+
+	i2c_status |= writeSensorRegisterMMA8451Q(0x23, 0x02); // 0.252g
+	i2c_status |= writeSensorRegisterMMA8451Q(0x24, 0x02); // 0.252g
+	i2c_status |= writeSensorRegisterMMA8451Q(0x25, 0x02); // 0.252g
+
+	/* Maximum time limit (0.159s). */
+	i2c_status |= writeSensorRegisterMMA8451Q(0x26, 0xFF);
+
+	/* Maximum latency timer. */
+	i2c_status |= writeSensorRegisterMMA8451Q(0x27, 0xFF);
 
 	/*
 	 * 0x0E: XYZ_DATA_CFG register
@@ -205,18 +228,20 @@ configureSensorMMA8451Q(void)
 	 * RESERVED[1:0] = 000
 	 * FS[1:0] = 00		=> 2g scale
 	 */
-	// i2c_status |= writeSensorRegisterMMA8451Q(0x0E, 0b000100000);
+	i2c_status |= writeSensorRegisterMMA8451Q(0x0E, 0x10);
 
 	/*
 	 * 0x2A: CTRL_REG1 system control 1 register
 	 *
 	 * ASLP_RATE[1:0] = 00	=> 50 Hz
-	 * DR[2:0] = 000	=> 800 Hz data rate
+	 * DR[2:0] = 000	=> 50 Hz data rate
 	 * LNOISE = 0		=> Normal mode
 	 * F_READ = 0		=> Normal mode
 	 * ACTIVE = 1		=> Active mode
 	 */
-	i2c_status |= writeSensorRegisterMMA8451Q(0x2A, 0b00000001);
+	i2c_status |= writeSensorRegisterMMA8451Q(0x2A, 0b00100001);
+
+	warpPrint("Configured!\n");
 
 	return i2c_status;
 }
@@ -400,19 +425,17 @@ void startLoopMMA8451Q(void)
 			}
 		}
 
-		warpPrint("BEGIN\n");
+		warpPrint("X,Y,Z\n");
 
 		for (int i = 0; i < MMA8451Q_FIFO_SIZE; ++i)
 		{
 			const struct Readings *readings = process_readings(&buffer[i]);
-			warpPrint("X: %d Y: %d Z: %d\n",
+			warpPrint("%d,%d,%d\n",
 				  readings->x,
 				  readings->y,
 				  readings->z);
 		}
 
-		warpPrint("END\n");
-
-		OSA_TimeDelay(500);
+		OSA_TimeDelay(200);
 	}
 }

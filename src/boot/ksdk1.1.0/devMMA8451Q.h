@@ -40,6 +40,6 @@
 void initMMA8451Q(const uint8_t i2cAddress, uint16_t operatingVoltageMillivolts);
 WarpStatus readSensorRegisterMMA8451Q(uint8_t deviceRegister, int numberOfBytes);
 WarpStatus writeSensorRegisterMMA8451Q(uint8_t deviceRegister, uint8_t payloadBtye);
-WarpStatus configureSensorMMA8451Q();
+WarpStatus configureSensorMMA8451Q(void);
 void printSensorDataMMA8451Q(bool hexModeFlag);
 void startLoopMMA8451Q(void);
