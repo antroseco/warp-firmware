@@ -2703,7 +2703,13 @@ main(void)
 			case 'y':
 			{
 				warpPrint("\r\n\tStarting Activity Classifier...\n");
-				startLoopMMA8451Q();
+
+				const WarpStatus status = configureSensorMMA8451Q();
+
+				if (status != kWarpStatusOK)
+					warpPrint("\r\nFailed to configure the MMA8451Q\n");
+				else
+					startLoopMMA8451Q();
 
 				break;
 			}
@@ -3133,11 +3139,9 @@ printAllSensors(bool printHeadersAndCalibration, bool hexModeFlag, int menuDelay
 					);
 	#endif
 	#if (WARP_BUILD_ENABLE_DEVMMA8451Q)
-	numberOfConfigErrors += configureSensorMMA8451Q(0x00,/* Payload: Disable FIFO */
-					0x01/* Normal read 8bit, 800Hz, normal, active mode */
-					);
-	#endif
-	#if (WARP_BUILD_ENABLE_DEVMAG3110)
+	numberOfConfigErrors += configureSensorMMA8451Q();
+#endif
+#if (WARP_BUILD_ENABLE_DEVMAG3110)
 	numberOfConfigErrors += configureSensorMAG3110(	0x00,/*	Payload: DR 000, OS 00, 80Hz, ADC 1280, Full 16bit, standby mode to set up register*/
 					0xA0,/*	Payload: AUTO_MRST_EN enable, RAW value without offset */
 					);
