@@ -10,27 +10,33 @@ still = pd.read_csv("stationary.csv")
 print("Jumping length: ", len(jumping))
 print("Running length: ", len(running))
 print("Walking length: ", len(walking))
-print("still length: ", len(still))
+print("Still length: ", len(still))
 
 
-def make_vars(series, name):
-    vars_x = []
-    vars_y = []
-    vars_z = []
+def make_vars(series):
+    vars_max = []
+    vars_mid = []
+    vars_min = []
 
     # FIXME
     for i in range(0, len(series), 32):
-        vars_x.append(series["X"][i : i + 128].var())
-        vars_y.append(series["Y"][i : i + 128].var())
-        vars_z.append(series["Z"][i : i + 128].var())
+        vars = [
+            series["X"][i : i + 128].var(),
+            series["Y"][i : i + 128].var(),
+            series["Z"][i : i + 128].var(),
+        ]
 
-    return list(zip(vars_x, vars_y, vars_z))
+        vars_max.append(np.max(vars))
+        vars_mid.append(np.median(vars))
+        vars_min.append(np.min(vars))
+
+    return list(zip(vars_max, vars_mid, vars_min))
 
 
-vars_walking = make_vars(walking, "walking")
-vars_running = make_vars(running, "running")
-vars_jumping = make_vars(jumping, "jumping")
-vars_still = make_vars(still, "still")
+vars_walking = make_vars(walking)
+vars_running = make_vars(running)
+vars_jumping = make_vars(jumping)
+vars_still = make_vars(still)
 
 
 def sigma(x):
@@ -62,53 +68,60 @@ def prepare(v):
     return np.hstack((1, v, v**2))
 
 
+# Take the log and divide by 16 to normalize values to the [0, 1] range.
 Xs_jumping = [prepare(np.log(np.asarray([x, y, z])) / 16) for x, y, z in vars_jumping]
 Xs_running = [prepare(np.log(np.asarray([x, y, z])) / 16) for x, y, z in vars_running]
 Xs_walking = [prepare(np.log(np.asarray([x, y, z])) / 16) for x, y, z in vars_walking]
 Xs_still = [prepare(np.log(np.asarray([x, y, z])) / 16) for x, y, z in vars_still]
 
 
-def learn_weights(Xs_target, Xs_2, Xs_3, Xs_4):
-    # One big list.
-    Xs = Xs_target + Xs_2 + Xs_3 + Xs_4
-    Ys = [-1] * len(Xs_target) + [1] * (len(Xs_2) + len(Xs_3) + len(Xs_4))
-
-    assert len(Xs) == len(Ys)
-
+def plot_3d(Xs, Ys, name):
     fig = plt.figure()
     ax = fig.add_subplot(projection="3d")
     ax.scatter(
         [x[1] for x in Xs],
         [x[2] for x in Xs],
         [x[3] for x in Xs],
-        s=20,
+        s=20,  # type: ignore
         c=Ys,
         cmap="RdYlBu",
     )
 
+    ax.set_title(name)
+
+    ax.set_xlabel("Max")
+    ax.set_ylabel("Mid")
+    ax.set_zlabel("Min")  # type: ignore
+
+    fig.tight_layout()
+
     plt.show()
 
-    w = gradient_ascent(Xs, Ys, 400)
+
+def learn_weights(Xs_target, Xs_2, Xs_3, Xs_4, name):
+    # One big list.
+    Xs = Xs_target + Xs_2 + Xs_3 + Xs_4
+    Ys = [-1] * len(Xs_target) + [1] * (len(Xs_2) + len(Xs_3) + len(Xs_4))
+
+    plot_3d(Xs, Ys, name)
+
+    assert len(Xs) == len(Ys)
+
+    w = gradient_ascent(Xs, Ys, 1000)
 
     predictions = [sigma(w @ x) for x in Xs]
 
-    fig = plt.figure()
-    ax = fig.add_subplot(projection="3d")
-    ax.scatter(
-        [x[1] for x in Xs],
-        [x[2] for x in Xs],
-        [x[3] for x in Xs],
-        s=20,
-        c=predictions,
-        cmap="RdYlBu",
-    )
+    plot_3d(Xs, predictions, name)
 
-    plt.show()
-
-    print(w)
+    return w
 
 
-learn_weights(Xs_jumping, Xs_running, Xs_walking, Xs_still)
-learn_weights(Xs_running, Xs_jumping, Xs_walking, Xs_still)
-learn_weights(Xs_walking, Xs_jumping, Xs_running, Xs_still)
-learn_weights(Xs_still, Xs_jumping, Xs_running, Xs_walking)
+w_jumping = learn_weights(Xs_jumping, Xs_running, Xs_walking, Xs_still, "Jumping")
+w_running = learn_weights(Xs_running, Xs_jumping, Xs_walking, Xs_still, "Running")
+w_walking = learn_weights(Xs_walking, Xs_jumping, Xs_running, Xs_still, "Walking")
+w_still = learn_weights(Xs_still, Xs_jumping, Xs_running, Xs_walking, "Still")
+
+print(w_jumping)
+print(w_running)
+print(w_walking)
+print(w_still)
