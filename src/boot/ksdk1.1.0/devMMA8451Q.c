@@ -63,6 +63,34 @@ extern volatile uint32_t gWarpI2cBaudRateKbps;
 extern volatile uint32_t gWarpI2cTimeoutMilliseconds;
 extern volatile uint32_t gWarpSupplySettlingDelayMilliseconds;
 
+/*
+ * Uses a GCC extension to return result from the expression. This simplifies
+ * error handling. See https://gcc.gnu.org/onlinedocs/gcc/Statement-Exprs.html.
+ */
+#define MUST(expr) ({                                                                 \
+	const WarpStatus result = expr;                                               \
+                                                                                      \
+	if (result != kWarpStatusOK)                                                  \
+	{                                                                             \
+		warpPrint("Evaluation of %s failed (rc = %d)\n", #expr, (int)result); \
+		return;                                                               \
+	}                                                                             \
+                                                                                      \
+	result;                                                                       \
+})
+
+/*
+ * Like MUST(), but propagates errors.
+ */
+#define TRY(expr) ({                    \
+	const WarpStatus result = expr; \
+                                        \
+	if (result != kWarpStatusOK)    \
+		return result;          \
+                                        \
+	result;                         \
+})
+
 #define MMA8451Q_FIFO_SIZE 32
 
 #define MMA8451Q_STATUS_REGISTER 0x00
@@ -185,50 +213,39 @@ writeSensorRegisterMMA8451Q(uint8_t deviceRegister, uint8_t payload)
 WarpStatus
 configureSensorMMA8451Q(void)
 {
-	WarpStatus i2c_status = 0;
-
 	warpScaleSupplyVoltage(deviceMMA8451QState.operatingVoltageMillivolts);
 
 	/* Need to enter Standby mode first. */
-	i2c_status |= writeSensorRegisterMMA8451Q(0x2A, 0b00100000);
+	TRY(writeSensorRegisterMMA8451Q(0x2A, 0b00100000));
 
 	/*
 	 * 0x09: F_SETUP FIFO setup register
 	 *
-	 * F_MODE[1:0] = 11     => Trigger mode
-	 * F_WMRK[5:0] = 000100 => Watermark = 4
+	 * F_MODE[1:0] = 01     => Circular buffer
+	 * F_WMRK[5:0] = 000000 => Watermark disabled
 	 */
-	i2c_status |= writeSensorRegisterMMA8451Q(0x09, 0b11000100);
-
-	/* 0x0F: HP_FILTER_CUTOFF high-pass filter register */
-	i2c_status |= writeSensorRegisterMMA8451Q(0x0F, 0b00000011);
-
-	/* Set Trig_PULSE: Pulse interrupt trigger bit. */
-	i2c_status |= writeSensorRegisterMMA8451Q(0x0A, 0x08);
-
-	/* Enable XYZ single pulse detection. */
-	// i2c_status |= writeSensorRegisterMMA8451Q(0x21, 0x15);
-	i2c_status |= writeSensorRegisterMMA8451Q(0x21, 0x55);
-
-	i2c_status |= writeSensorRegisterMMA8451Q(0x23, 0x02); // 0.252g
-	i2c_status |= writeSensorRegisterMMA8451Q(0x24, 0x02); // 0.252g
-	i2c_status |= writeSensorRegisterMMA8451Q(0x25, 0x02); // 0.252g
-
-	/* Maximum time limit (0.159s). */
-	i2c_status |= writeSensorRegisterMMA8451Q(0x26, 0xFF);
-
-	/* Maximum latency timer. */
-	i2c_status |= writeSensorRegisterMMA8451Q(0x27, 0xFF);
+	TRY(writeSensorRegisterMMA8451Q(0x09, 0b01000000));
 
 	/*
 	 * 0x0E: XYZ_DATA_CFG register
 	 *
 	 * RESERVED[2:0] = 000
 	 * HPF_OUT = 1		=> Output data is high-pass filtered
-	 * RESERVED[1:0] = 000
+	 * RESERVED[1:0] = 00
 	 * FS[1:0] = 00		=> 2g scale
 	 */
-	i2c_status |= writeSensorRegisterMMA8451Q(0x0E, 0x10);
+	TRY(writeSensorRegisterMMA8451Q(0x0E, 0b00010000));
+
+	/*
+	 * 0x0F: HP_FILTER_CUTOFF high-pass filter register
+	 *
+	 * RESERVED[1:0]
+	 * Pulse_PHF_BYP = 0	=> HPF enabled for pulse processing
+	 * Pulse_LPF_EN = 0	=> LPF disabled for pulse processing
+	 * RESERVED[1:0] = 00
+	 * SEL[1:0] = 11	=> 0.25 Hz HPF cut-off frequency (@ 50 Hz)
+	 */
+	TRY(writeSensorRegisterMMA8451Q(0x0F, 0b00000011));
 
 	/*
 	 * 0x2A: CTRL_REG1 system control 1 register
@@ -239,11 +256,11 @@ configureSensorMMA8451Q(void)
 	 * F_READ = 0		=> Normal mode
 	 * ACTIVE = 1		=> Active mode
 	 */
-	i2c_status |= writeSensorRegisterMMA8451Q(0x2A, 0b00100001);
+	TRY(writeSensorRegisterMMA8451Q(0x2A, 0b00100001));
 
 	warpPrint("Configured!\n");
 
-	return i2c_status;
+	return kWarpStatusOK;
 }
 
 static WarpStatus
@@ -281,10 +298,7 @@ read_register(uint8_t device_register, int number_of_bytes, uint8_t *out)
 	//     gWarpI2cTimeoutMilliseconds);
 
 	if (status != kStatus_I2C_Success)
-	{
-		warpPrint("i2c Status: %d", status);
 		return kWarpStatusDeviceCommunicationFailed;
-	}
 
 	return kWarpStatusOK;
 }
@@ -400,34 +414,27 @@ void startLoopMMA8451Q(void)
 
 	while (true)
 	{
-		WarpStatus i2c_status = 0;
+		OSA_TimeDelay(200);
 
-		i2c_status = read_register(MMA8451Q_STATUS_REGISTER,
-					   1, NULL);
+		uint8_t status_reg = 0;
+		MUST(read_register(MMA8451Q_STATUS_REGISTER, 1, &status_reg));
 
-		if (i2c_status != kWarpStatusOK)
-		{
-			warpPrint("i2c read failed %d\n", i2c_status);
-			return;
-		}
+		/* 6 lower bits. */
+		const int readings_in_fifo = status_reg & 0b00111111;
 
-		warpPrint("STATUS 0x%02x\n", deviceMMA8451QState.i2cBuffer[0]);
+		/* Nothing to do. */
+		if (!readings_in_fifo)
+			continue;
 
-		for (int i = 0; i < MMA8451Q_FIFO_SIZE; ++i)
-		{
-			i2c_status = read_register(MMA8451Q_FIFO_POINTER_REGISTER,
-						   sizeof buffer[i], (uint8_t *)&buffer[i]);
+		/*
+		 * We have to empty the FIFO in a single transaction (data sheet
+		 * says "It is assumed that the host application shall use the
+		 * I2C multi-byte read transaction to empty the FIFO").
+		 */
+		MUST(read_register(MMA8451Q_FIFO_POINTER_REGISTER,
+				   readings_in_fifo * sizeof *buffer, (uint8_t *)&buffer));
 
-			if (i2c_status != kWarpStatusOK)
-			{
-				warpPrint("i2c read failed %d\n", i2c_status);
-				return;
-			}
-		}
-
-		warpPrint("X,Y,Z\n");
-
-		for (int i = 0; i < MMA8451Q_FIFO_SIZE; ++i)
+		for (int i = 0; i < readings_in_fifo; ++i)
 		{
 			const struct Readings *readings = process_readings(&buffer[i]);
 			warpPrint("%d,%d,%d\n",
@@ -435,7 +442,5 @@ void startLoopMMA8451Q(void)
 				  readings->y,
 				  readings->z);
 		}
-
-		OSA_TimeDelay(200);
 	}
 }
