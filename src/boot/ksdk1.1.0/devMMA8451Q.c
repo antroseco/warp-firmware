@@ -563,7 +563,7 @@ static WarpStatus consume_buffer(struct ReadingsRaw *buffer)
 	int label_index;
 	const float probability = evaluate_soft_max(x_vector, &label_index);
 
-	warpPrint("%s %d", labels[label_index], (int)(100 * probability));
+	warpPrint("%s %d\n", labels[label_index], (int)(100 * probability));
 
 	return kWarpStatusOK;
 }
