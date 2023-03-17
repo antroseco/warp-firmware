@@ -197,10 +197,10 @@ writeSensorRegisterMMA8451Q(uint8_t deviceRegister, uint8_t payload)
 	}
 	}
 
-	i2c_device_t slave =
-	    {
-		.address = deviceMMA8451QState.i2cAddress,
-		.baudRate_kbps = gWarpI2cBaudRateKbps};
+	i2c_device_t slave = {
+	    .address = deviceMMA8451QState.i2cAddress,
+	    .baudRate_kbps = gWarpI2cBaudRateKbps,
+	};
 
 	warpScaleSupplyVoltage(deviceMMA8451QState.operatingVoltageMillivolts);
 	commandByte[0] = deviceRegister;
@@ -215,10 +215,9 @@ writeSensorRegisterMMA8451Q(uint8_t deviceRegister, uint8_t payload)
 	    payloadByte,
 	    1,
 	    gWarpI2cTimeoutMilliseconds);
+
 	if (status != kStatus_I2C_Success)
-	{
 		return kWarpStatusDeviceCommunicationFailed;
-	}
 
 	return kWarpStatusOK;
 }
@@ -271,8 +270,6 @@ configureSensorMMA8451Q(void)
 	 */
 	TRY(writeSensorRegisterMMA8451Q(0x2A, 0b00100001));
 
-	warpPrint("Configured!\n");
-
 	return kWarpStatusOK;
 }
 
@@ -290,10 +287,10 @@ read_register(uint8_t device_register, int number_of_bytes, uint8_t *out)
 	if (device_register > MMA8451Q_REGISTER_MAX)
 		return kWarpStatusBadDeviceCommand;
 
-	i2c_device_t slave =
-	    {
-		.address = deviceMMA8451QState.i2cAddress,
-		.baudRate_kbps = gWarpI2cBaudRateKbps};
+	i2c_device_t slave = {
+	    .address = deviceMMA8451QState.i2cAddress,
+	    .baudRate_kbps = gWarpI2cBaudRateKbps,
+	};
 
 	warpScaleSupplyVoltage(deviceMMA8451QState.operatingVoltageMillivolts);
 	cmd_buf[0] = device_register;
@@ -306,8 +303,7 @@ read_register(uint8_t device_register, int number_of_bytes, uint8_t *out)
 	    1,
 	    data_buf,
 	    number_of_bytes,
-	    100);
-	//     gWarpI2cTimeoutMilliseconds);
+	    100 /* Increase the timeout to allow for multi-byte reads. */);
 
 	if (status != kStatus_I2C_Success)
 		return kWarpStatusDeviceCommunicationFailed;
