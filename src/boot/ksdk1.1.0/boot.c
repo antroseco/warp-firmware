@@ -2017,6 +2017,16 @@ main(void)
 		}
 	#endif
 
+	#if WARP_BUILD_BOOT_TO_ACTIVITY_CLASSIFIER
+		{
+			const WarpStatus status = configureSensorMMA8451Q();
+
+			if (status == kWarpStatusOK)
+				startLoopMMA8451Q();
+		}
+	#endif
+
+
 	while (1)
 	{
 		/*
