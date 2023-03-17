@@ -37,6 +37,7 @@
 	POSSIBILITY OF SUCH DAMAGE.
 */
 #include <stdlib.h>
+#include <math.h>
 
 /*
  *	config.h needs to come first
@@ -96,6 +97,16 @@ extern volatile uint32_t gWarpSupplySettlingDelayMilliseconds;
 #define MMA8451Q_STATUS_REGISTER 0x00
 #define MMA8451Q_FIFO_POINTER_REGISTER 0x01
 #define MMA8451Q_REGISTER_MAX 0x31
+
+/* Inference parameters. */
+#define INFERENCE_VEC_SIZE 7
+static const char *labels[] = {"jumping", "running", "walking", "stationary"};
+static const float weights[][INFERENCE_VEC_SIZE] = {
+    {-17.39943301, 5.256097, 3.24514102, 1.3606968, 25.56750169, -8.568405, -11.95350373},
+    {-24.97473782, -2.35878075, 11.83739203, 6.22502951, -19.89792035, 26.18027844, 16.17929617},
+    {-37.96150929, 40.8224073, 53.63272301, 49.52424346, -41.485758, -37.15202189, -41.86794511},
+    {15.06727486, -1.84220104, -6.17115701, -6.21080921, -6.5857426, -9.87536488, -9.06407057},
+};
 
 struct __attribute__((packed)) ReadingsRaw
 {
@@ -406,19 +417,153 @@ void printSensorDataMMA8451Q(bool hexModeFlag)
 	}
 }
 
-static WarpStatus consume_buffer(struct ReadingsRaw *buffer)
+static WarpStatus compute_variance(struct ReadingsRaw *buffer,
+				   float *norm_x, float *norm_y, float *norm_z)
 {
 	if (!buffer)
 		return kWarpStatusBadArgument;
 
+	/*
+	 * This cannot overflow! The largest reading we can have is 8191. If we
+	 * square that and multiply by 32 to get the largest possible sum of
+	 * squares, the result fits in 31 bits.
+	 */
+	int32_t var_x = 0;
+	int32_t var_y = 0;
+	int32_t var_z = 0;
+
 	for (int i = 0; i < MMA8451Q_FIFO_SIZE; ++i)
 	{
 		const struct Readings *readings = process_readings(&buffer[i]);
-		warpPrint("%d,%d,%d\n",
-			  readings->x,
-			  readings->y,
-			  readings->z);
+		// warpPrint("%d,%d,%d\n",
+		// 	  readings->x,
+		// 	  readings->y,
+		// 	  readings->z);
+
+		/* High-pass Filter enabled, therefore approximate mean as 0. */
+		var_x += readings->x * readings->x;
+		var_y += readings->y * readings->y;
+		var_z += readings->z * readings->z;
 	}
+
+	/* Divisor is a power of 2, so it should compile to just a shift. */
+	var_x /= MMA8451Q_FIFO_SIZE;
+	var_y /= MMA8451Q_FIFO_SIZE;
+	var_z /= MMA8451Q_FIFO_SIZE;
+
+	// warpPrint("%d,%d,%d\n", var_x, var_y, var_z);
+
+	/* Normalize values to the [0, 1] range approximately. */
+	*norm_x = logf(var_x) / 16;
+	*norm_y = logf(var_y) / 16;
+	*norm_z = logf(var_z) / 16;
+
+	return kWarpStatusOK;
+}
+
+static void setup_inference_vector(float norm_x, float norm_y, float norm_z,
+				   float *vector)
+{
+	/* Sort in descending order. This introduces rotation invariance. */
+	const float max = MAX(norm_x, MAX(norm_y, norm_z));
+	const float min = MIN(norm_x, MIN(norm_y, norm_z));
+
+	/* Finding the median is a bit uglier. */
+	float mid;
+	if (norm_x != max && norm_x != min)
+		mid = norm_x;
+	else if (norm_y != max && norm_y != min)
+		mid = norm_y;
+	else
+		mid = norm_z;
+
+	vector[0] = 1.0;
+	vector[1] = max;
+	vector[2] = mid;
+	vector[3] = min;
+	vector[4] = max * max;
+	vector[5] = mid * mid;
+	vector[6] = min * min;
+}
+
+static float vector_dot(const float *a, const float *b, int size)
+{
+	/* Vector dot-product. */
+	float dot_product = 0;
+
+	for (int i = 0; i < size; ++i)
+		dot_product += a[i] * b[i];
+
+	return dot_product;
+}
+
+static float evaluate_single(const float *w, const float *x, int size)
+{
+	/* Single evaluation for the soft-max function. */
+	return expf(vector_dot(w, x, size));
+}
+
+static float array_argmax(const float *array, int size)
+{
+	float a_max = -INFINITY;
+	int arg = 0;
+
+	for (int i = 0; i < size; ++i)
+		if (array[i] > a_max)
+		{
+			a_max = array[i];
+			arg = i;
+		}
+
+	return arg;
+}
+
+float array_sum(const float *array, int size)
+{
+	int sum = 0;
+
+	for (int i = 0; i < size; ++i)
+		sum += array[i];
+
+	return sum;
+}
+
+float evaluate_soft_max(const float *x_vector, int *label_index)
+{
+	const float evals[] = {
+	    evaluate_single(weights[0], x_vector, INFERENCE_VEC_SIZE),
+	    evaluate_single(weights[1], x_vector, INFERENCE_VEC_SIZE),
+	    evaluate_single(weights[2], x_vector, INFERENCE_VEC_SIZE),
+	    evaluate_single(weights[3], x_vector, INFERENCE_VEC_SIZE),
+	};
+
+	const int argmax = array_argmax(evals, ARRAY_SIZE(evals));
+
+	/* Soft-max. */
+	const float probability = evals[argmax] /
+				  array_sum(evals, ARRAY_SIZE(evals));
+
+	/* Output label. */
+	*label_index = argmax;
+
+	return probability;
+}
+
+static WarpStatus consume_buffer(struct ReadingsRaw *buffer)
+{
+	float norm_x = 0;
+	float norm_y = 0;
+	float norm_z = 0;
+
+	TRY(compute_variance(buffer, &norm_x, &norm_y, &norm_z));
+
+	float x_vector[7];
+	setup_inference_vector(norm_x, norm_y, norm_z, x_vector);
+
+	int label_index;
+	const float probability = evaluate_soft_max(x_vector, &label_index);
+
+	warpPrint("%s %d", labels[label_index], (int)(100 * probability));
 
 	return kWarpStatusOK;
 }
