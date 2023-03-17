@@ -7,6 +7,7 @@
 
 #include "fsl_spi_master_driver.h"
 #include "fsl_port_hal.h"
+#include "fsl_misc_utilities.h"
 
 #include "SEGGER_RTT.h"
 #include "gpio_pins.h"
@@ -64,7 +65,15 @@ writeCommand(uint8_t commandByte)
 	return status;
 }
 
-
+void devSSD1331clearScreen(void)
+{
+	/* Clear entire screen. */
+	writeCommand(kSSD1331CommandCLEAR);
+	writeCommand(0x00);
+	writeCommand(0x00);
+	writeCommand(0x5F);
+	writeCommand(0x3F);
+}
 
 int
 devSSD1331init(void)
@@ -146,14 +155,7 @@ devSSD1331init(void)
 	writeCommand(kSSD1331CommandFILL);
 	writeCommand(0x01);
 
-	/*
-	 *	Clear Screen
-	 */
-	writeCommand(kSSD1331CommandCLEAR);
-	writeCommand(0x00);
-	writeCommand(0x00);
-	writeCommand(0x5F);
-	writeCommand(0x3F);
+	devSSD1331clearScreen();
 
 	/*
 	 *	Fill the entire screen with the brightest shade of green.
@@ -171,4 +173,60 @@ devSSD1331init(void)
 	writeCommand(0x00); // Color A of the fill area.
 
 	return 0;
+}
+
+void devSSD1331drawActivity(int activity, float probability)
+{
+	/* Draw one square for each activity level (up to 4). */
+	for (int i = 0; i < MIN(activity, 4); ++i)
+	{
+		writeCommand(kSSD1331CommandDRAWRECT);
+		writeCommand(24 * i + 2);  // Column address of start.
+		writeCommand(2);	   // Row address of start.
+		writeCommand(24 * i + 22); // Column address of end.
+		writeCommand(22);	   // Row address of end.
+		writeCommand(0xFF);	   // Color C of the line.
+		writeCommand(0x00);	   // Color B of the line.
+		writeCommand(0x00);	   // Color A of the line.
+		writeCommand(0xFF);	   // Color C of the fill area.
+		writeCommand(0x00);	   // Color B of the fill area.
+		writeCommand(0x00);	   // Color A of the fill area.
+	}
+
+	/* Clear remaining squares. */
+	if (activity < 4)
+	{
+		writeCommand(kSSD1331CommandCLEAR);
+		writeCommand(24 * activity + 2);
+		writeCommand(2);
+		writeCommand(95);
+		writeCommand(22);
+	}
+
+	/* Draw a rectangle to indicate probability. */
+	int length = (int)(probability * 92);
+	length = MIN(length, 92);
+	length = MAX(length, 0);
+
+	writeCommand(kSSD1331CommandDRAWRECT);
+	writeCommand(2);	  // Column address of start.
+	writeCommand(26);	  // Row address of start.
+	writeCommand(2 + length); // Column address of end.
+	writeCommand(26 + 20);	  // Row address of end.
+	writeCommand(0x00);	  // Color C of the line.
+	writeCommand(0xFF);	  // Color B of the line.
+	writeCommand(0x00);	  // Color A of the line.
+	writeCommand(0x00);	  // Color C of the fill area.
+	writeCommand(0xFF);	  // Color B of the fill area.
+	writeCommand(0x00);	  // Color A of the fill area.
+
+	/* Clear remaining bar. */
+	if (length < 92)
+	{
+		writeCommand(kSSD1331CommandCLEAR);
+		writeCommand(3 + length);
+		writeCommand(26);
+		writeCommand(95);
+		writeCommand(26 + 20);
+	}
 }

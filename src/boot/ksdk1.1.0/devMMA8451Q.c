@@ -58,6 +58,7 @@
 #include "SEGGER_RTT.h"
 #include "warp.h"
 #include "devMMA8451Q.h"
+#include "devSSD1331.h"
 
 extern volatile WarpI2CDeviceState deviceMMA8451QState;
 extern volatile uint32_t gWarpI2cBaudRateKbps;
@@ -100,12 +101,12 @@ extern volatile uint32_t gWarpSupplySettlingDelayMilliseconds;
 
 /* Inference parameters. */
 #define INFERENCE_VEC_SIZE 7
-static const char *labels[] = {"jumping", "running", "walking", "stationary"};
+static const char *labels[] = {"Stationary", "Walking", "Running", "Jumping"};
 static const float weights[][INFERENCE_VEC_SIZE] = {
-    {-13.10811183, 4.918834, -2.17001111, -0.49517191, 23.71468085, -7.62446347, -7.41696791},
-    {-24.9530344, -1.9296893, 12.29307804, 6.52435167, -19.71056821, 25.42783071, 15.08661804},
-    {-59.07509115, 48.33650435, 63.63207188, 64.42407662, -43.04040799, -37.79053592, -50.70542156},
     {19.53366281, 4.17987552, -6.32959318, -7.20169904, -2.07712563, -15.868433, -14.58375232},
+    {-59.07509115, 48.33650435, 63.63207188, 64.42407662, -43.04040799, -37.79053592, -50.70542156},
+    {-24.9530344, -1.9296893, 12.29307804, 6.52435167, -19.71056821, 25.42783071, 15.08661804},
+    {-13.10811183, 4.918834, -2.17001111, -0.49517191, 23.71468085, -7.62446347, -7.41696791},
 };
 
 struct __attribute__((packed)) ReadingsRaw
@@ -572,6 +573,8 @@ static WarpStatus consume_buffer(struct ReadingsRaw *buffer)
 	int label_index;
 	const float probability = evaluate_soft_max(x_vector, &label_index);
 
+	devSSD1331drawActivity(label_index + 1, probability);
+
 	warpPrint("%s %d\n", labels[label_index], (int)(100 * probability));
 
 	prev_x = norm_x;
@@ -585,6 +588,8 @@ void startLoopMMA8451Q(void)
 {
 	struct ReadingsRaw buffer[MMA8451Q_FIFO_SIZE];
 	int buffer_size = 0;
+
+	devSSD1331clearScreen();
 
 	while (true)
 	{

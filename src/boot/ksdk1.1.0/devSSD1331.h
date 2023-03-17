@@ -43,3 +43,5 @@ typedef enum
 } SSD1331Commands;
 
 int	devSSD1331init(void);
+void	devSSD1331clearScreen(void);
+void	devSSD1331drawActivity(int activity, float probability);
