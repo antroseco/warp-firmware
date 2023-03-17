@@ -518,7 +518,7 @@ static float array_argmax(const float *array, int size)
 	return arg;
 }
 
-float array_sum(const float *array, int size)
+static float array_sum(const float *array, int size)
 {
 	float sum = 0;
 
@@ -528,7 +528,7 @@ float array_sum(const float *array, int size)
 	return sum;
 }
 
-float evaluate_soft_max(const float *x_vector, int *label_index)
+static float evaluate_soft_max(const float *x_vector, int *label_index)
 {
 	const float evals[] = {
 	    evaluate_single(weights[0], x_vector, INFERENCE_VEC_SIZE),
