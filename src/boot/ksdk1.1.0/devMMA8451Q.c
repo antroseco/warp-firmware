@@ -551,11 +551,20 @@ float evaluate_soft_max(const float *x_vector, int *label_index)
 
 static WarpStatus consume_buffer(struct ReadingsRaw *buffer)
 {
+	static float prev_x = 0;
+	static float prev_y = 0;
+	static float prev_z = 0;
+
 	float norm_x = 0;
 	float norm_y = 0;
 	float norm_z = 0;
 
 	TRY(compute_variance(buffer, &norm_x, &norm_y, &norm_z));
+
+	/* Average the normalized variance over a period of time. */
+	norm_x = 0.5 * (norm_x + prev_x);
+	norm_y = 0.5 * (norm_y + prev_y);
+	norm_z = 0.5 * (norm_z + prev_z);
 
 	float x_vector[7];
 	setup_inference_vector(norm_x, norm_y, norm_z, x_vector);
@@ -564,6 +573,10 @@ static WarpStatus consume_buffer(struct ReadingsRaw *buffer)
 	const float probability = evaluate_soft_max(x_vector, &label_index);
 
 	warpPrint("%s %d\n", labels[label_index], (int)(100 * probability));
+
+	prev_x = norm_x;
+	prev_y = norm_y;
+	prev_z = norm_z;
 
 	return kWarpStatusOK;
 }
