@@ -54,6 +54,8 @@ typedef enum
 	kWarpStatusErrorPowerSysSetmode,
 	kWarpStatusBadPowerModeSpecified,
 
+	kWarpStatusBadArgument,
+
 	/*
 	 *	Always keep this as the last item.
 	 */

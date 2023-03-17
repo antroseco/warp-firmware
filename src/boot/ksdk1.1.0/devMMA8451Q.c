@@ -406,6 +406,23 @@ void printSensorDataMMA8451Q(bool hexModeFlag)
 	}
 }
 
+static WarpStatus consume_buffer(struct ReadingsRaw *buffer)
+{
+	if (!buffer)
+		return kWarpStatusBadArgument;
+
+	for (int i = 0; i < MMA8451Q_FIFO_SIZE; ++i)
+	{
+		const struct Readings *readings = process_readings(&buffer[i]);
+		warpPrint("%d,%d,%d\n",
+			  readings->x,
+			  readings->y,
+			  readings->z);
+	}
+
+	return kWarpStatusOK;
+}
+
 void startLoopMMA8451Q(void)
 {
 	struct ReadingsRaw buffer[MMA8451Q_FIFO_SIZE];
@@ -450,14 +467,7 @@ void startLoopMMA8451Q(void)
 		}
 
 		/* Buffer is full. */
-		for (int i = 0; i < buffer_size; ++i)
-		{
-			const struct Readings *readings = process_readings(&buffer[i]);
-			warpPrint("%d,%d,%d\n",
-				  readings->x,
-				  readings->y,
-				  readings->z);
-		}
+		MUST(consume_buffer(buffer));
 
 		/* Empty buffer. */
 		buffer_size = 0;
