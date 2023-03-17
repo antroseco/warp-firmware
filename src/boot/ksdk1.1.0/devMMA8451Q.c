@@ -520,7 +520,7 @@ static float array_argmax(const float *array, int size)
 
 float array_sum(const float *array, int size)
 {
-	int sum = 0;
+	float sum = 0;
 
 	for (int i = 0; i < size; ++i)
 		sum += array[i];
