@@ -157,8 +157,8 @@ void initMMA8451Q(const uint8_t i2cAddress, uint16_t operatingVoltageMillivolts)
 WarpStatus
 writeSensorRegisterMMA8451Q(uint8_t deviceRegister, uint8_t payload)
 {
-	uint8_t		payloadByte[1], commandByte[1];
-	i2c_status_t	status;
+	uint8_t payloadByte[1], commandByte[1];
+	i2c_status_t status;
 
 	// clang-format off
 	switch (deviceRegister)
@@ -172,22 +172,21 @@ writeSensorRegisterMMA8451Q(uint8_t deviceRegister, uint8_t payload)
 		case 0x2c: case 0x2d: case 0x2e: case 0x2f:
 		case 0x30: case 0x31:
 		{
-			// clang-format on
-			/* OK */
-			break;
-		}
+		// clang-format on
+		/* OK */
+		break;
+	}
 
-		default:
-		{
-			return kWarpStatusBadDeviceCommand;
-		}
+	default:
+	{
+		return kWarpStatusBadDeviceCommand;
+	}
 	}
 
 	i2c_device_t slave =
-	{
+	    {
 		.address = deviceMMA8451QState.i2cAddress,
-		.baudRate_kbps = gWarpI2cBaudRateKbps
-	};
+		.baudRate_kbps = gWarpI2cBaudRateKbps};
 
 	warpScaleSupplyVoltage(deviceMMA8451QState.operatingVoltageMillivolts);
 	commandByte[0] = deviceRegister;
@@ -195,13 +194,13 @@ writeSensorRegisterMMA8451Q(uint8_t deviceRegister, uint8_t payload)
 	warpEnableI2Cpins();
 
 	status = I2C_DRV_MasterSendDataBlocking(
-							0 /* I2C instance */,
-							&slave,
-							commandByte,
-							1,
-							payloadByte,
-							1,
-							gWarpI2cTimeoutMilliseconds);
+	    0 /* I2C instance */,
+	    &slave,
+	    commandByte,
+	    1,
+	    payloadByte,
+	    1,
+	    gWarpI2cTimeoutMilliseconds);
 	if (status != kStatus_I2C_Success)
 	{
 		return kWarpStatusDeviceCommunicationFailed;
@@ -278,10 +277,9 @@ read_register(uint8_t device_register, int number_of_bytes, uint8_t *out)
 		return kWarpStatusBadDeviceCommand;
 
 	i2c_device_t slave =
-	{
+	    {
 		.address = deviceMMA8451QState.i2cAddress,
-		.baudRate_kbps = gWarpI2cBaudRateKbps
-	};
+		.baudRate_kbps = gWarpI2cBaudRateKbps};
 
 	warpScaleSupplyVoltage(deviceMMA8451QState.operatingVoltageMillivolts);
 	cmd_buf[0] = device_register;
@@ -411,6 +409,7 @@ void printSensorDataMMA8451Q(bool hexModeFlag)
 void startLoopMMA8451Q(void)
 {
 	struct ReadingsRaw buffer[MMA8451Q_FIFO_SIZE];
+	int buffer_size = 0;
 
 	while (true)
 	{
@@ -426,15 +425,32 @@ void startLoopMMA8451Q(void)
 		if (!readings_in_fifo)
 			continue;
 
+		const int to_read = MIN(MMA8451Q_FIFO_SIZE - buffer_size,
+					readings_in_fifo);
+
 		/*
 		 * We have to empty the FIFO in a single transaction (data sheet
 		 * says "It is assumed that the host application shall use the
 		 * I2C multi-byte read transaction to empty the FIFO").
 		 */
 		MUST(read_register(MMA8451Q_FIFO_POINTER_REGISTER,
-				   readings_in_fifo * sizeof *buffer, (uint8_t *)&buffer));
+				   to_read * sizeof *buffer,
+				   (uint8_t *)&(buffer[buffer_size])));
 
-		for (int i = 0; i < readings_in_fifo; ++i)
+		buffer_size += to_read;
+
+		/* Wait for a full buffer. */
+		if (buffer_size < MMA8451Q_FIFO_SIZE)
+			continue;
+
+		if (buffer_size > MMA8451Q_FIFO_SIZE)
+		{
+			warpPrint("Corrupted buffer size %d\n", buffer_size);
+			return;
+		}
+
+		/* Buffer is full. */
+		for (int i = 0; i < buffer_size; ++i)
 		{
 			const struct Readings *readings = process_readings(&buffer[i]);
 			warpPrint("%d,%d,%d\n",
@@ -442,5 +458,8 @@ void startLoopMMA8451Q(void)
 				  readings->y,
 				  readings->z);
 		}
+
+		/* Empty buffer. */
+		buffer_size = 0;
 	}
 }
