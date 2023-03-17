@@ -23,6 +23,7 @@ at once:
 - Updates the OLED display with the results (red squares represent the
 class---one square for walking and four for jumping---and the green bar
 represents the class probability)
+- Writes the class and class probability to the console
 
 * Updating the OLED takes 300-700 ms, depending on the content, therefore the
 MCU is not polling very often at all.
