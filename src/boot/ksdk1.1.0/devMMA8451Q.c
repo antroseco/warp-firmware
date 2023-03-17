@@ -93,6 +93,8 @@ extern volatile uint32_t gWarpSupplySettlingDelayMilliseconds;
 	result;                         \
 })
 
+#define MMA8451Q_ENABLE_TIMING 1
+
 #define MMA8451Q_FIFO_SIZE 32
 
 #define MMA8451Q_STATUS_REGISTER 0x00
@@ -560,6 +562,10 @@ static WarpStatus consume_buffer(struct ReadingsRaw *buffer)
 	float norm_y = 0;
 	float norm_z = 0;
 
+#if MMA8451Q_ENABLE_TIMING
+	int start = RTC->TPR;
+#endif
+
 	TRY(compute_variance(buffer, &norm_x, &norm_y, &norm_z));
 
 	/* Average the normalized variance over a period of time. */
@@ -573,7 +579,18 @@ static WarpStatus consume_buffer(struct ReadingsRaw *buffer)
 	int label_index;
 	const float probability = evaluate_soft_max(x_vector, &label_index);
 
+#if MMA8451Q_ENABLE_TIMING
+	int end = RTC->TPR;
+	warpPrint("Inference: %d ticks\n", (32768 + end - start) % 32768);
+	start = RTC->TPR;
+#endif
+
 	devSSD1331drawActivity(label_index + 1, probability);
+
+#if MMA8451Q_ENABLE_TIMING
+	end = RTC->TPR;
+	warpPrint("Draw: %d ticks\n", (32768 + end - start) % 32768);
+#endif
 
 	warpPrint("%s %d\n", labels[label_index], (int)(100 * probability));
 
@@ -593,7 +610,8 @@ void startLoopMMA8451Q(void)
 
 	while (true)
 	{
-		OSA_TimeDelay(200);
+		/* We don't need a delay when we are drawing to the display. */
+		// OSA_TimeDelay(200);
 
 		uint8_t status_reg = 0;
 		MUST(read_register(MMA8451Q_STATUS_REGISTER, 1, &status_reg));
