@@ -1,114 +1,98 @@
-## Overview
-The Warp firmware is intended to be a demonstration and meassurement environment for testing the Warp hardware. 
+# 4B25 Activity Classifier
 
-It provides facilities that we use to perform tests on the hardware such as activating the different programmable voltage regulator output voltages (16 different supply voltage levels),
-activating the programmable I2C pull-ups to different values (65536 different settings), changing the I2C and SPI bit rate, changing the Cortex-M0 clock frequency,
-and so on. Having a menu interface allows us to perform various experiments without having to re-compile and load firmware to the system for each experiment.
+## Summary
 
-The Warp firmware is a tool for experimentation. You can also use it as a baseline for building real applications by modifying it to remove the menu-driven functionality and linking in only the sensor drivers you need.
+Activity classifier for the FRDM-KL03 development board, using the MMA8451Q
+accelerometer (internal) and the SSD1331 OLED display (external, over SPI).
 
-The core of the firmware is in `warp-kl03-ksdk1.1-boot.c`. The drivers for the individual sensors are in `devXXX.c` for sensor `XXX`. For example,
-`devADXL362.c` for the ADXL362 3-axis accelerometer. The section below briefly describes all the source files in this directory. 
+The current model supports four classes: stationary, walking, running, and
+jumping.
 
+Accelerometer is configured to use its 32-entry FIFO (circular buffer mode),
+with the high-pass filter enabled, sampling at 50 Hz.
 
-## Source File Descriptions
+The MCU then polls* the accelerometer for data, and reads all available readings
+until it fills its own 32-entry buffer. It then processes all 32-entry entries
+at once:
+- Estimates the variance in the readings, per axis
+- Normalizes the variances to the [0, 1] range (roughly)
+- Sorts the variances by magnitude, for rotation invariance
+- Computes the feature vector used for inference
+- Evaluates the probability of the feature vector against each class, computes
+        the assigned class and class probability with the soft-max function
+- Updates the OLED display with the results (red squares represent the
+class---one square for walking and four for jumping---and the green bar
+represents the class probability)
 
-##### `CMakeLists.txt`
-This is the CMake configuration file. Edit this to change the default size of the stack and heap.
+* Updating the OLED takes 300-700 ms, depending on the content, therefore the
+MCU is not polling very often at all.
 
+## Compiling
 
-##### `SEGGER_RTT.*`
-This is the implementation of the SEGGER Real-Time Terminal interface. Do not modify.
+- Set up your environment, e.g.
 
-##### `SEGGER_RTT_Conf.h`
-Configuration file for SEGGER Real-Time Terminal interface. You can increase the size of `BUFFER_SIZE_UP` to reduce text in the menu being trimmed.
+```shell
+export JLINKPATH=/usr/bin/JLinkExe
+export ARMGCC_DIR=/usr
+```
 
-##### `SEGGER_RTT_printf.c`
-Implementation of the SEGGER Real-Time Terminal interface formatted I/O routines. Do not modify.
+- Make the `frdmkl03` target
 
-##### `devADXL362.*`
-Driver for Analog devices ADXL362.
+```shell
+make frdmkl03
+```
 
-##### `devAMG8834.*`
-Driver for AMG8834.
+- Flash your FRDM-KL03 board
 
-##### `devAS7262.*`
-Driver for AS7262.
+```shell
+make load-warp
+```
 
-##### `devAS7263.*`
-Driver for AS7263.
+### Binary size
 
-##### `devAS726x.h`
-Header file with definitions used by both `devAS7262.*` and `devAS7263.*`.
+The FRDM-KL03 only has 32 KB of flash. This project makes full use of it,
+therefore your binary might not fit if you use a different compiler or implement
+additional functionality.
 
-##### `devBME680.*`
-Driver for BME680.
+With `arm-none-eabi-gcc (Fedora 12.2.0-1.fc37) 12.2.0`, `objdump` reports:
+- `.text`: 31456 bytes (including ~6000 bytes of strings)
+- `.data`: 224 bytes
+- `.bss`: 760 bytes
+- a few more small sections with ~200 bytes total
 
-##### `devBMX055.*`
-Driver for BMX055.
+This brings the total very close to 32768 bytes!
 
-##### `devCCS811.*`
-Driver for CCS811.
+If you are having issues, you could try compiling with `-Os` instead of `-O3`.
 
-##### `devHDC1000.*`
-Driver forHDC1000 .
+## Interesting files
 
-##### `devIS25WP128.*`
-Driver for IS25WP128.
+### Implementation
 
-##### `devISL23415.*`
-Driver for ISL23415.
+- `src/boot/ksdk1.1.0/boot.c`: support for the INA219 & SSD1331, new menu option
+        to start the activity classifier, bypasses the menu when
+        `WARP_BUILD_BOOT_TO_ACTIVITY_CLASSIFIER` is defined
+- `src/boot/ksdk1.1.0/config.h`: new build options for sensors and activity
+        classifier
+- `src/boot/ksdk1.1.0/devMMA8451Q.{c,h}`: MMA8451Q driver and activity
+        classifier implementation (including inference)
+- `src/boot/ksdk1.1.0/devSSD1331.{c,h}`: SSD1331 driver and activity classifier
+        display code
 
-##### `devL3GD20H.*`
-Driver for L3GD20H.
+### Inference
 
-##### `devLPS25H.*`
-Driver for LPS25H.
+- `inference/learn.py`: offline logistic regression training and evaluation
+- `inference/*.csv`: data used for offline training and testing (one per class)
 
-##### `devMAG3110.*`
-Driver for MAG3110.
+### Less interesting changes
 
-##### `devMMA8451Q.*`
-Driver for MMA8451Q.
-
-##### `devPAN1326.*`
-Driver for PAN1326.
-
-##### `devSI4705.*`
-Driver for SI4705.
-
-##### `devSI7021.*`
-Driver for SI7021.
-
-##### `devTCS34725.*`
-Driver for TCS34725.
-
-##### `gpio_pins.c`
-Definition of I/O pin configurations using the KSDK `gpio_output_pin_user_config_t` structure.
-
-##### `gpio_pins.h`
-Definition of I/O pin mappings and aliases for different I/O pins to symbolic names relevant to the Warp hardware design, via `GPIO_MAKE_PIN()`.
-
-##### `startup_MKL03Z4.S`
-Initialization assembler.
-
-##### `warp-kl03-ksdk1.1-boot.c`
-The core of the implementation. This puts together the processor initialization with a menu interface that triggers the individual sensor drivers based on commands entered at the menu.
-You can modify `warp-kl03-ksdk1.1-boot.c` to achieve a custom firmware implementation using the following steps:
-
-1.  Remove the definitions for all the `WarpI2CDeviceState` and `WarpSPIDeviceState` structures for the sensors you are not using.
-
-2.  Remove the function `repeatRegisterReadForDeviceAndAddress()` since that references all the sensors in the full Warp platform.
-
-3.  Remove `activateAllLowPowerSensorModes()` and `powerupAllSensors()` since those assume they have access to all the sensors on the Warp platform.
-
-4.  Modify `main()` to replace the menu (see the `while (1)` [loop](https://github.com/physical-computation/Warp-firmware/blob/ea3fac66e0cd85546b71134538f8d8f6ce1741f3/src/boot/ksdk1.1.0/warp-kl03-ksdk1.1-boot.c#L1107)) with the specific operations you want the hardware to perform after initialization.
-
-You can inspect the baseline firmware to see what functions are called when you enter commands at the menu. You can then use the underlying functionality that is already implemented to implement your own custom tasks.
-
-
-##### `warp-kl03-ksdk1.1-powermodes.c`
-Implements functionality related to enabling the different low-power modes of the KL03.
-
-##### `warp.h`
-Constant and data structure definitions.
+For the sake of completeness:
+- `Makefile`
+- a bunch of unnecessary build scripts were removed
+- `setup.conf`
+- `CMakeLists-FRDMKL03.txt`
+- `src/boot/ksdk1.1.0/devINA219.{c,h}`: INA219 driver
+- `src/boot/ksdk1.1.0/gpio_pins.h`: updated pins for the INA219 and SSD1331
+- `src/boot/ksdk1.1.0/powermodes.c`
+- `src/boot/ksdk1.1.0/warp.h`
+- `tools/scripts/warp.jlink.commands`
+- `tools/sdk/ksdk1.1.0/platform/startup/startup.c`
